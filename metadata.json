@@ -1,0 +1,6 @@
+{
+  "name": "MCQ Learning App",
+  "description": "Production-ready Bengali and English MCQ learning, PDF-to-MCQ OCR extraction, practice, and online examination Android app.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

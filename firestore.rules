@@ -1,0 +1,650 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL PRIMITIVES ---
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.uid == 'aaWqMj9EgnWbZbX3skVUMOgpgRq2';
+    }
+
+    function isActiveAdminDoc() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'active';
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || isActiveAdminDoc();
+    }
+
+    function hasPermission(perm) {
+      return isSuperAdmin() || (
+        isActiveAdminDoc() &&
+        perm in get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.permissions
+      );
+    }
+
+    // --- ENTITY VALIDATION HELPERS ---
+
+    function isValidOrganization(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 160 &&
+             (!('code' in data) || (data.code is string && data.code.size() <= 64)) &&
+             data.status in ['active', 'inactive'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.uid == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+             data.email is string && data.email.size() <= 200 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 32)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1024)) &&
+             data.role in ['student', 'admin', 'super_admin'] &&
+             (!('preferredLanguage' in data) || data.preferredLanguage in ['bn', 'en']) &&
+             (!('fcmToken' in data) || (data.fcmToken is string && data.fcmToken.size() <= 512)) &&
+             (!('totalExams' in data) || (data.totalExams is int && data.totalExams >= 0)) &&
+             (!('totalAttempted' in data) || (data.totalAttempted is int && data.totalAttempted >= 0)) &&
+             (!('totalCorrect' in data) || (data.totalCorrect is int && data.totalCorrect >= 0)) &&
+             (!('totalIncorrect' in data) || (data.totalIncorrect is int && data.totalIncorrect >= 0)) &&
+             (!('bestScore' in data) || (data.bestScore is number && data.bestScore >= 0)) &&
+             data.status in ['active', 'suspended'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdminRecord(data, adminId) {
+      return data.uid == adminId &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 120)) &&
+             data.permissions is list && data.permissions.size() <= 20 &&
+             (data.permissions.size() == 0 || data.permissions[0] is string) &&
+             data.assignedBy is string && data.assignedBy.size() <= 128 &&
+             data.status in ['active', 'revoked'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSubject(data) {
+      return data.nameBn is string && data.nameBn.size() >= 1 && data.nameBn.size() <= 120 &&
+             data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 120 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             (!('iconName' in data) || (data.iconName is string && data.iconName.size() <= 64)) &&
+             data.displayOrder is int && data.displayOrder >= 0 && data.displayOrder <= 10000 &&
+             (!('questionCount' in data) || (data.questionCount is int && data.questionCount >= 0)) &&
+             (!('organizationId' in data) || (data.organizationId is string && data.organizationId.size() <= 128)) &&
+             data.status in ['published', 'draft', 'archived'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidChapter(data) {
+      return data.subjectId is string && isValidId(data.subjectId) &&
+             data.nameBn is string && data.nameBn.size() >= 1 && data.nameBn.size() <= 160 &&
+             data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 160 &&
+             data.displayOrder is int && data.displayOrder >= 0 && data.displayOrder <= 10000 &&
+             (!('organizationId' in data) || (data.organizationId is string && data.organizationId.size() <= 128)) &&
+             data.status in ['published', 'draft', 'archived'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTopic(data) {
+      return data.subjectId is string && isValidId(data.subjectId) &&
+             data.chapterId is string && isValidId(data.chapterId) &&
+             data.nameBn is string && data.nameBn.size() >= 1 && data.nameBn.size() <= 160 &&
+             data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 160 &&
+             (!('organizationId' in data) || (data.organizationId is string && data.organizationId.size() <= 128)) &&
+             data.status in ['published', 'draft', 'archived'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPdfDocument(data) {
+      return data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 255 &&
+             data.storagePath is string && data.storagePath.size() >= 1 && data.storagePath.size() <= 512 &&
+             data.fileUrl is string && data.fileUrl.size() <= 1024 &&
+             data.fileSizeBytes is int && data.fileSizeBytes >= 0 &&
+             data.pageCount is int && data.pageCount >= 0 && data.pageCount <= 5000 &&
+             (!('fileType' in data) || (data.fileType is string && data.fileType.size() <= 64)) &&
+             data.processingStatus in ['uploaded', 'processing', 'completed', 'failed'] &&
+             (!('extractedCount' in data) || (data.extractedCount is int && data.extractedCount >= 0)) &&
+             (!('subjectId' in data) || (data.subjectId is string && data.subjectId.size() <= 128)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             (!('organizationId' in data) || (data.organizationId is string && data.organizationId.size() <= 128)) &&
+             data.status in ['active', 'archived'] &&
+             (!('uploadedBy' in data) || (data.uploadedBy is string && data.uploadedBy.size() <= 128)) &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPdfProcessingJob(data) {
+      return data.pdfId is string && isValidId(data.pdfId) &&
+             (!('pdfFileName' in data) || (data.pdfFileName is string && data.pdfFileName.size() <= 255)) &&
+             data.mode in ['text', 'ocr', 'hybrid'] &&
+             data.processedPages is int && data.processedPages >= 0 &&
+             data.totalPages is int && data.totalPages >= 0 &&
+             (!('extractedQuestionsCount' in data) || (data.extractedQuestionsCount is int && data.extractedQuestionsCount >= 0)) &&
+             (!('unverifiedCount' in data) || (data.unverifiedCount is int && data.unverifiedCount >= 0)) &&
+             (!('errorMessage' in data) || (data.errorMessage is string && data.errorMessage.size() <= 1000)) &&
+             data.status in ['queued', 'running', 'completed', 'failed'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidQuestionPublic(data) {
+      return data.questionText is string && data.questionText.size() >= 1 && data.questionText.size() <= 4000 &&
+             (!('originalPdfText' in data) || (data.originalPdfText is string && data.originalPdfText.size() <= 5000)) &&
+             data.optionA is string && data.optionA.size() >= 1 && data.optionA.size() <= 1000 &&
+             data.optionB is string && data.optionB.size() >= 1 && data.optionB.size() <= 1000 &&
+             data.optionC is string && data.optionC.size() <= 1000 &&
+             data.optionD is string && data.optionD.size() <= 1000 &&
+             data.subjectId is string && data.subjectId.size() <= 128 &&
+             (!('subjectName' in data) || (data.subjectName is string && data.subjectName.size() <= 120)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             (!('chapterName' in data) || (data.chapterName is string && data.chapterName.size() <= 160)) &&
+             (!('topicId' in data) || (data.topicId is string && data.topicId.size() <= 128)) &&
+             (!('topicName' in data) || (data.topicName is string && data.topicName.size() <= 160)) &&
+             (!('questionSetId' in data) || (data.questionSetId is string && data.questionSetId.size() <= 128)) &&
+             data.difficulty in ['easy', 'medium', 'hard'] &&
+             data.language in ['bn', 'en'] &&
+             (!('source' in data) || (data.source is string && data.source.size() <= 255)) &&
+             (!('sourcePdfId' in data) || (data.sourcePdfId is string && data.sourcePdfId.size() <= 128)) &&
+             (!('pageNumber' in data) || (data.pageNumber is int && data.pageNumber >= 0)) &&
+             (!('questionNumber' in data) || (data.questionNumber is int && data.questionNumber >= 0)) &&
+             (!('confidence' in data) || (data.confidence is number && data.confidence >= 0 && data.confidence <= 1)) &&
+             data.verified is bool &&
+             data.needsReview is bool &&
+             (!('hasMath' in data) || data.hasMath is bool) &&
+             (!('searchTokens' in data) || (data.searchTokens is list && data.searchTokens.size() <= 40)) &&
+             (!('organizationId' in data) || (data.organizationId is string && data.organizationId.size() <= 128)) &&
+             data.status in ['published', 'unpublished', 'rejected'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidQuestionAnswerPrivate(data, questionId) {
+      return data.questionId == questionId &&
+             data.correctAnswer in ['A', 'B', 'C', 'D', ''] &&
+             (!('explanation' in data) || (data.explanation is string && data.explanation.size() <= 4000)) &&
+             data.verified is bool &&
+             (!('confidence' in data) || (data.confidence is number && data.confidence >= 0 && data.confidence <= 1)) &&
+             data.status in ['active', 'unverified', 'rejected'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidQuestionSet(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+             data.subjectId is string && data.subjectId.size() <= 128 &&
+             (!('subjectName' in data) || (data.subjectName is string && data.subjectName.size() <= 120)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             (!('chapterName' in data) || (data.chapterName is string && data.chapterName.size() <= 160)) &&
+             (!('topicId' in data) || (data.topicId is string && data.topicId.size() <= 128)) &&
+             data.questionCount is int && data.questionCount >= 0 &&
+             (!('attemptCount' in data) || (data.attemptCount is int && data.attemptCount >= 0)) &&
+             (!('language' in data) || data.language in ['bn', 'en']) &&
+             (!('sourcePdfId' in data) || (data.sourcePdfId is string && data.sourcePdfId.size() <= 128)) &&
+             (!('organizationId' in data) || (data.organizationId is string && data.organizationId.size() <= 128)) &&
+             data.status in ['published', 'draft', 'archived'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidExamination(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.subjectId is string && data.subjectId.size() <= 128 &&
+             (!('subjectName' in data) || (data.subjectName is string && data.subjectName.size() <= 120)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             (!('questionSetId' in data) || (data.questionSetId is string && data.questionSetId.size() <= 128)) &&
+             (!('questionIds' in data) || (data.questionIds is list && data.questionIds.size() <= 300)) &&
+             data.totalQuestions is int && data.totalQuestions >= 1 && data.totalQuestions <= 300 &&
+             data.totalMarks is number && data.totalMarks > 0 &&
+             data.marksPerQuestion is number && data.marksPerQuestion > 0 &&
+             data.negativeMarking is number && data.negativeMarking >= 0 &&
+             data.timeLimitMinutes is int && data.timeLimitMinutes >= 0 && data.timeLimitMinutes <= 600 &&
+             data.examMode in ['timed', 'untimed', 'custom'] &&
+             (!('randomQuestionOrder' in data) || data.randomQuestionOrder is bool) &&
+             (!('randomOptionOrder' in data) || data.randomOptionOrder is bool) &&
+             (!('startAtMillis' in data) || data.startAtMillis is int) &&
+             (!('endAtMillis' in data) || data.endAtMillis is int) &&
+             (!('organizationId' in data) || (data.organizationId is string && data.organizationId.size() <= 128)) &&
+             data.status in ['published', 'draft', 'closed'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidExamSession(data) {
+      return data.examId is string && isValidId(data.examId) &&
+             data.userId == request.auth.uid &&
+             (!('answers' in data) || data.answers is map) &&
+             (!('startedAtMillis' in data) || data.startedAtMillis is int) &&
+             data.status in ['in_progress', 'completed', 'expired'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPracticeSession(data) {
+      return data.userId == request.auth.uid &&
+             (!('subjectId' in data) || (data.subjectId is string && data.subjectId.size() <= 128)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             (!('topicId' in data) || (data.topicId is string && data.topicId.size() <= 128)) &&
+             (!('questionSetId' in data) || (data.questionSetId is string && data.questionSetId.size() <= 128)) &&
+             (!('title' in data) || (data.title is string && data.title.size() <= 200)) &&
+             data.questionIds is list && data.questionIds.size() <= 300 &&
+             (!('selectedAnswers' in data) || data.selectedAnswers is map) &&
+             data.currentIndex is int && data.currentIndex >= 0 &&
+             (!('correctCount' in data) || (data.correctCount is int && data.correctCount >= 0)) &&
+             (!('incorrectCount' in data) || (data.incorrectCount is int && data.incorrectCount >= 0)) &&
+             data.status in ['in_progress', 'completed'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidStudentProgress(data) {
+      return data.userId == request.auth.uid &&
+             data.subjectId is string && data.subjectId.size() <= 128 &&
+             (!('subjectName' in data) || (data.subjectName is string && data.subjectName.size() <= 120)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             (!('chapterName' in data) || (data.chapterName is string && data.chapterName.size() <= 160)) &&
+             data.attempted is int && data.attempted >= 0 &&
+             data.correct is int && data.correct >= 0 &&
+             data.incorrect is int && data.incorrect >= 0 &&
+             (!('dateKey' in data) || (data.dateKey is string && data.dateKey.size() <= 32)) &&
+             data.status == 'active' &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidWrongAnswer(data) {
+      return data.userId == request.auth.uid &&
+             data.questionId is string && isValidId(data.questionId) &&
+             data.questionText is string && data.questionText.size() >= 1 && data.questionText.size() <= 4000 &&
+             data.subjectId is string && data.subjectId.size() <= 128 &&
+             (!('subjectName' in data) || (data.subjectName is string && data.subjectName.size() <= 120)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             (!('chapterName' in data) || (data.chapterName is string && data.chapterName.size() <= 160)) &&
+             (!('selectedOption' in data) || data.selectedOption in ['A', 'B', 'C', 'D', '']) &&
+             (!('correctAnswer' in data) || data.correctAnswer in ['A', 'B', 'C', 'D', '']) &&
+             (!('explanation' in data) || (data.explanation is string && data.explanation.size() <= 4000)) &&
+             (!('mistakeCount' in data) || (data.mistakeCount is int && data.mistakeCount >= 1)) &&
+             data.status in ['active', 'resolved'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidBookmark(data) {
+      return data.userId == request.auth.uid &&
+             data.questionId is string && isValidId(data.questionId) &&
+             data.questionText is string && data.questionText.size() >= 1 && data.questionText.size() <= 4000 &&
+             (!('subjectId' in data) || (data.subjectId is string && data.subjectId.size() <= 128)) &&
+             (!('subjectName' in data) || (data.subjectName is string && data.subjectName.size() <= 120)) &&
+             (!('chapterId' in data) || (data.chapterId is string && data.chapterId.size() <= 128)) &&
+             data.collectionName is string && data.collectionName.size() >= 1 && data.collectionName.size() <= 80 &&
+             (!('reviewLater' in data) || data.reviewLater is bool) &&
+             data.status == 'active' &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNotification(data) {
+      return data.targetUid is string && data.targetUid.size() >= 1 && data.targetUid.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 1500 &&
+             data.category in ['new_mcq_set', 'new_exam', 'exam_update', 'new_subject', 'new_chapter', 'study_material', 'announcement', 'result_published'] &&
+             (!('referenceId' in data) || (data.referenceId is string && data.referenceId.size() <= 128)) &&
+             (!('readByUids' in data) || (data.readByUids is list && data.readByUids.size() <= 1000)) &&
+             data.status in ['active', 'archived'] &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAppSettings(data) {
+      return data.maintenanceMode is bool &&
+             data.allowRegistration is bool &&
+             (!('defaultNegativeMarking' in data) || (data.defaultNegativeMarking is number && data.defaultNegativeMarking >= 0)) &&
+             (!('announcementBanner' in data) || (data.announcementBanner is string && data.announcementBanner.size() <= 500)) &&
+             data.status == 'active' &&
+             data.updatedBy is string && data.updatedBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAuditLog(data) {
+      return data.actorUid is string && data.actorUid.size() <= 128 &&
+             data.action is string && data.action.size() >= 1 && data.action.size() <= 120 &&
+             data.targetPath is string && data.targetPath.size() <= 255 &&
+             (!('details' in data) || (data.details is string && data.details.size() <= 1000)) &&
+             data.status == 'logged' &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // --- COLLECTION RULES ---
+
+    match /organizations/{orgId} {
+      allow get: if isSignedIn() && isValidId(orgId);
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSuperAdmin() && isValidId(orgId) && isValidOrganization(incoming());
+      allow update: if isSuperAdmin() && isValidId(orgId) && isValidOrganization(incoming()) &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isSuperAdmin() && isValidId(orgId);
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (
+        request.auth.uid == userId || isSuperAdmin() || hasPermission('student_manage')
+      );
+      allow list: if isSuperAdmin() || hasPermission('student_manage');
+      allow create: if isSignedIn() && isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserProfile(incoming(), userId) &&
+                       (
+                         (isSuperAdmin() && incoming().role == 'super_admin') ||
+                         (incoming().role == 'student')
+                       );
+      allow update: if isSignedIn() && isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().uid == existing().uid &&
+                       incoming().createdAt == existing().createdAt && (
+                         isSuperAdmin() ||
+                         (
+                           hasPermission('student_manage') &&
+                           incoming().role == existing().role &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+                         ) ||
+                         (
+                           request.auth.uid == userId &&
+                           incoming().role == existing().role &&
+                           incoming().status == existing().status &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'photoUrl', 'preferredLanguage', 'fcmToken', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isSuperAdmin() && isValidId(userId);
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isSuperAdmin());
+      allow list: if isSuperAdmin();
+      allow create: if isSuperAdmin() && isValidId(adminId) && isValidAdminRecord(incoming(), adminId);
+      allow update: if isSuperAdmin() && isValidId(adminId) && isValidAdminRecord(incoming(), adminId) &&
+                       incoming().uid == existing().uid &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isSuperAdmin() && isValidId(adminId);
+    }
+
+    match /subjects/{subjectId} {
+      allow get: if isSignedIn() && isValidId(subjectId) && (existing().status == 'published' || isAdmin());
+      allow list: if isSignedIn() && (existing().status == 'published' || isAdmin());
+      allow create: if hasPermission('subject_manage') && isValidId(subjectId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidSubject(incoming());
+      allow update: if hasPermission('subject_manage') && isValidId(subjectId) &&
+                       isValidSubject(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('subject_manage') && isValidId(subjectId);
+    }
+
+    match /chapters/{chapterId} {
+      allow get: if isSignedIn() && isValidId(chapterId) && (existing().status == 'published' || isAdmin());
+      allow list: if isSignedIn() && (existing().status == 'published' || isAdmin());
+      allow create: if hasPermission('subject_manage') && isValidId(chapterId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidChapter(incoming());
+      allow update: if hasPermission('subject_manage') && isValidId(chapterId) &&
+                       isValidChapter(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('subject_manage') && isValidId(chapterId);
+    }
+
+    match /topics/{topicId} {
+      allow get: if isSignedIn() && isValidId(topicId) && (existing().status == 'published' || isAdmin());
+      allow list: if isSignedIn() && (existing().status == 'published' || isAdmin());
+      allow create: if hasPermission('subject_manage') && isValidId(topicId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidTopic(incoming());
+      allow update: if hasPermission('subject_manage') && isValidId(topicId) &&
+                       isValidTopic(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('subject_manage') && isValidId(topicId);
+    }
+
+    match /pdfDocuments/{pdfId} {
+      allow get: if isAdmin() && isValidId(pdfId);
+      allow list: if isAdmin();
+      allow create: if hasPermission('pdf_upload') && isValidId(pdfId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidPdfDocument(incoming());
+      allow update: if hasPermission('pdf_upload') && isValidId(pdfId) &&
+                       isValidPdfDocument(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('pdf_delete') && isValidId(pdfId);
+    }
+
+    match /pdfProcessingJobs/{jobId} {
+      allow get: if isAdmin() && isValidId(jobId);
+      allow list: if isAdmin();
+      allow create: if hasPermission('pdf_upload') && isValidId(jobId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidPdfProcessingJob(incoming());
+      allow update: if hasPermission('pdf_upload') && isValidId(jobId) &&
+                       isValidPdfProcessingJob(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('pdf_delete') && isValidId(jobId);
+    }
+
+    match /questions_public/{questionId} {
+      allow get: if isSignedIn() && isValidId(questionId) && (existing().status == 'published' || isAdmin());
+      allow list: if isSignedIn() && (existing().status == 'published' || isAdmin());
+      allow create: if hasPermission('question_create') && isValidId(questionId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       (incoming().status == 'unpublished' || hasPermission('question_publish')) &&
+                       isValidQuestionPublic(incoming());
+      allow update: if (hasPermission('question_edit') || hasPermission('question_publish')) &&
+                       isValidId(questionId) &&
+                       isValidQuestionPublic(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt &&
+                       (incoming().status == existing().status || hasPermission('question_publish'));
+      allow delete: if hasPermission('question_delete') && isValidId(questionId);
+    }
+
+    // CRITICAL: Answer keys NEVER readable by normal students!
+    match /questionAnswers_private/{questionId} {
+      allow get: if isAdmin() && isValidId(questionId);
+      allow list: if isAdmin();
+      allow create: if hasPermission('question_create') && isValidId(questionId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidQuestionAnswerPrivate(incoming(), questionId);
+      allow update: if (hasPermission('question_edit') || hasPermission('question_publish')) &&
+                       isValidId(questionId) &&
+                       isValidQuestionAnswerPrivate(incoming(), questionId) &&
+                       incoming().questionId == existing().questionId &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('question_delete') && isValidId(questionId);
+    }
+
+    match /questionSets/{setId} {
+      allow get: if isSignedIn() && isValidId(setId) && (existing().status == 'published' || isAdmin());
+      allow list: if isSignedIn() && (existing().status == 'published' || isAdmin());
+      allow create: if (hasPermission('question_create') || hasPermission('pdf_upload')) &&
+                       isValidId(setId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidQuestionSet(incoming());
+      allow update: if (hasPermission('question_edit') || hasPermission('question_publish')) &&
+                       isValidId(setId) &&
+                       isValidQuestionSet(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('question_delete') && isValidId(setId);
+    }
+
+    match /examinations/{examId} {
+      allow get: if isSignedIn() && isValidId(examId) && (existing().status == 'published' || existing().status == 'closed' || isAdmin());
+      allow list: if isSignedIn() && (existing().status == 'published' || existing().status == 'closed' || isAdmin());
+      allow create: if hasPermission('exam_manage') && isValidId(examId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidExamination(incoming());
+      allow update: if hasPermission('exam_manage') && isValidId(examId) &&
+                       isValidExamination(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if hasPermission('exam_manage') && isValidId(examId);
+    }
+
+    match /examSessions/{sessionId} {
+      allow get: if isSignedIn() && isValidId(sessionId) && (existing().userId == request.auth.uid || hasPermission('result_view'));
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || hasPermission('result_view'));
+      allow create: if isSignedIn() && isValidId(sessionId) && isValidExamSession(incoming()) && incoming().status == 'in_progress';
+      allow update: if isSignedIn() && isValidId(sessionId) &&
+                       existing().userId == request.auth.uid &&
+                       existing().status == 'in_progress' &&
+                       isValidExamSession(incoming()) &&
+                       incoming().examId == existing().examId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(sessionId);
+    }
+
+    // Official results written ONLY by trusted Cloud Functions (Admin SDK); students read their own only
+    match /examinationResults/{resultId} {
+      allow get: if isSignedIn() && isValidId(resultId) && (existing().userId == request.auth.uid || hasPermission('result_view'));
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || hasPermission('result_view'));
+      allow create, update: if false;
+      allow delete: if isSuperAdmin() && isValidId(resultId);
+    }
+
+    match /practiceSessions/{sessionId} {
+      allow get: if isSignedIn() && isValidId(sessionId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(sessionId) && isValidPracticeSession(incoming());
+      allow update: if isSignedIn() && isValidId(sessionId) &&
+                       existing().userId == request.auth.uid &&
+                       isValidPracticeSession(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && isValidId(sessionId) && existing().userId == request.auth.uid;
+    }
+
+    match /studentProgress/{progressId} {
+      allow get: if isSignedIn() && isValidId(progressId) && (existing().userId == request.auth.uid || hasPermission('result_view'));
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || hasPermission('result_view'));
+      allow create: if isSignedIn() && isValidId(progressId) && isValidStudentProgress(incoming());
+      allow update: if isSignedIn() && isValidId(progressId) &&
+                       existing().userId == request.auth.uid &&
+                       isValidStudentProgress(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && isValidId(progressId) && existing().userId == request.auth.uid;
+    }
+
+    match /wrongAnswers/{wrongId} {
+      allow get: if isSignedIn() && isValidId(wrongId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(wrongId) && isValidWrongAnswer(incoming());
+      allow update: if isSignedIn() && isValidId(wrongId) &&
+                       existing().userId == request.auth.uid &&
+                       isValidWrongAnswer(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && isValidId(wrongId) && existing().userId == request.auth.uid;
+    }
+
+    match /bookmarks/{bookmarkId} {
+      allow get: if isSignedIn() && isValidId(bookmarkId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(bookmarkId) && isValidBookmark(incoming());
+      allow update: if isSignedIn() && isValidId(bookmarkId) &&
+                       existing().userId == request.auth.uid &&
+                       isValidBookmark(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && isValidId(bookmarkId) && existing().userId == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && isValidId(notificationId) && (
+        existing().targetUid == 'all' || existing().targetUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        existing().targetUid == 'all' || existing().targetUid == request.auth.uid || isAdmin()
+      );
+      allow create: if isAdmin() && isValidId(notificationId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       isValidNotification(incoming());
+      allow update: if isSignedIn() && isValidId(notificationId) &&
+                       isValidNotification(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         (
+                           (existing().targetUid == 'all' || existing().targetUid == request.auth.uid) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['readByUids', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isAdmin() && isValidId(notificationId);
+    }
+
+    match /appSettings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId);
+      allow list: if isSignedIn() && isSuperAdmin();
+      allow create: if isSuperAdmin() && isValidId(settingId) && isValidAppSettings(incoming());
+      allow update: if isSuperAdmin() && isValidId(settingId) &&
+                       isValidAppSettings(incoming()) &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isSuperAdmin() && isValidId(settingId);
+    }
+
+    match /auditLogs/{logId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if (isAdmin() || isSuperAdmin()) && isValidId(logId) &&
+                       incoming().actorUid == request.auth.uid &&
+                       isValidAuditLog(incoming());
+      allow update, delete: if false;
+    }
+  }
+}

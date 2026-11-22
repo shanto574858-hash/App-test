@@ -1,0 +1,69 @@
+{
+  "project_info": {
+    "project_number": "963139052911",
+    "firebase_url": "https://mcq-master-b170e-default-rtdb.firebaseio.com",
+    "project_id": "mcq-master-b170e",
+    "storage_bucket": "mcq-master-b170e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963139052911:android:224f7f025137b1ff19349a",
+        "android_client_info": {
+          "package_name": "Com.Mcq.mcqmaster"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963139052911-t4m0otgv9tlasei6rt3l8sohslfh44vt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzvMFLz5qqz32KhWvstWvPTalwDDXFAZ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963139052911-t4m0otgv9tlasei6rt3l8sohslfh44vt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963139052911:android:fc35e10bc4f6d00319349a",
+        "android_client_info": {
+          "package_name": "Com.mcqmaster"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963139052911-t4m0otgv9tlasei6rt3l8sohslfh44vt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzvMFLz5qqz32KhWvstWvPTalwDDXFAZ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963139052911-t4m0otgv9tlasei6rt3l8sohslfh44vt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

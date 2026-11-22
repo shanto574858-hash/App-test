@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Left book page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,34 C28,31.8 29.8,30 32,30 L51,30 C52.7,30 54,31.3 54,33 L54,71 C51.5,69.5 47.5,68.5 42,68.5 L32,68.5 C29.8,68.5 28,66.7 28,64.5 Z" />
+    <!-- Right book page -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M80,34 C80,31.8 78.2,30 76,30 L57,30 C55.3,30 54,31.3 54,33 L54,71 C56.5,69.5 60.5,68.5 66,68.5 L76,68.5 C78.2,68.5 80,66.7 80,64.5 Z" />
+    <!-- MCQ lines on left page -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M34,40 H48 V43 H34 Z M34,47 H46 V50 H34 Z M34,54 H48 V57 H34 Z" />
+    <!-- Teal MCQ verified badge circle -->
+    <path
+        android:fillColor="#00BFA5"
+        android:pathData="M67,48 A14,14 0 1,0 67,76 A14,14 0 1,0 67,48 Z" />
+    <!-- Crisp white checkmark inside badge -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M64.5,67.5 L59.5,62.5 L61.6,60.4 L64.5,63.3 L72.4,55.4 L74.5,57.5 Z" />
+</vector>

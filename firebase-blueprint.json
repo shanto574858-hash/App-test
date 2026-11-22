@@ -1,0 +1,460 @@
+{
+  "entities": {
+    "Organization": {
+      "title": "Organization",
+      "description": "Educational organization or tenant configuration.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered user profile and server-managed exam aggregates.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "admin", "super_admin"] },
+        "preferredLanguage": { "type": "string", "enum": ["bn", "en"] },
+        "fcmToken": { "type": "string" },
+        "totalExams": { "type": "integer" },
+        "totalAttempted": { "type": "integer" },
+        "totalCorrect": { "type": "integer" },
+        "totalIncorrect": { "type": "integer" },
+        "bestScore": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "role", "status", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Admin role and granular permission assignment managed by Super Admin.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "permissions": { "type": "array" },
+        "assignedBy": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "revoked"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "permissions", "assignedBy", "status", "createdAt", "updatedAt"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Academic subject category.",
+      "type": "object",
+      "properties": {
+        "nameBn": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "description": { "type": "string" },
+        "iconName": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "questionCount": { "type": "integer" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["published", "draft", "archived"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nameBn", "nameEn", "displayOrder", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "Chapter within a subject.",
+      "type": "object",
+      "properties": {
+        "subjectId": { "type": "string" },
+        "nameBn": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["published", "draft", "archived"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["subjectId", "nameBn", "nameEn", "displayOrder", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "Topic": {
+      "title": "Topic",
+      "description": "Topic within a chapter.",
+      "type": "object",
+      "properties": {
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "nameBn": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["published", "draft", "archived"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["subjectId", "chapterId", "nameBn", "nameEn", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "PdfDocument": {
+      "title": "PdfDocument",
+      "description": "Metadata for an uploaded PDF stored in Firebase Storage.",
+      "type": "object",
+      "properties": {
+        "fileName": { "type": "string" },
+        "storagePath": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "fileSizeBytes": { "type": "integer" },
+        "pageCount": { "type": "integer" },
+        "fileType": { "type": "string" },
+        "processingStatus": { "type": "string", "enum": ["uploaded", "processing", "completed", "failed"] },
+        "extractedCount": { "type": "integer" },
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "uploadedBy": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fileName", "storagePath", "fileUrl", "fileSizeBytes", "pageCount", "processingStatus", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "PdfProcessingJob": {
+      "title": "PdfProcessingJob",
+      "description": "Extraction and OCR processing job history for a PDF.",
+      "type": "object",
+      "properties": {
+        "pdfId": { "type": "string" },
+        "pdfFileName": { "type": "string" },
+        "mode": { "type": "string", "enum": ["text", "ocr", "hybrid"] },
+        "processedPages": { "type": "integer" },
+        "totalPages": { "type": "integer" },
+        "extractedQuestionsCount": { "type": "integer" },
+        "unverifiedCount": { "type": "integer" },
+        "errorMessage": { "type": "string" },
+        "status": { "type": "string", "enum": ["queued", "running", "completed", "failed"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["pdfId", "mode", "processedPages", "totalPages", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "QuestionPublic": {
+      "title": "QuestionPublic",
+      "description": "Publicly readable MCQ stem and options without private answer key.",
+      "type": "object",
+      "properties": {
+        "questionText": { "type": "string" },
+        "originalPdfText": { "type": "string" },
+        "optionA": { "type": "string" },
+        "optionB": { "type": "string" },
+        "optionC": { "type": "string" },
+        "optionD": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "chapterName": { "type": "string" },
+        "topicId": { "type": "string" },
+        "topicName": { "type": "string" },
+        "questionSetId": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+        "language": { "type": "string", "enum": ["bn", "en"] },
+        "source": { "type": "string" },
+        "sourcePdfId": { "type": "string" },
+        "pageNumber": { "type": "integer" },
+        "questionNumber": { "type": "integer" },
+        "confidence": { "type": "number" },
+        "verified": { "type": "boolean" },
+        "needsReview": { "type": "boolean" },
+        "hasMath": { "type": "boolean" },
+        "searchTokens": { "type": "array" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["published", "unpublished", "rejected"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["questionText", "optionA", "optionB", "optionC", "optionD", "subjectId", "difficulty", "language", "verified", "needsReview", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "QuestionAnswerPrivate": {
+      "title": "QuestionAnswerPrivate",
+      "description": "Protected correct answer and explanation accessible only to admins and Cloud Functions.",
+      "type": "object",
+      "properties": {
+        "questionId": { "type": "string" },
+        "correctAnswer": { "type": "string", "enum": ["A", "B", "C", "D", ""] },
+        "explanation": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "confidence": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "unverified", "rejected"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["questionId", "correctAnswer", "verified", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "QuestionSet": {
+      "title": "QuestionSet",
+      "description": "Curated or PDF-extracted MCQ set for practice and offline download.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "chapterName": { "type": "string" },
+        "topicId": { "type": "string" },
+        "questionCount": { "type": "integer" },
+        "attemptCount": { "type": "integer" },
+        "language": { "type": "string", "enum": ["bn", "en"] },
+        "sourcePdfId": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["published", "draft", "archived"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "subjectId", "questionCount", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "Examination": {
+      "title": "Examination",
+      "description": "Online examination configuration created by Admin.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "questionSetId": { "type": "string" },
+        "questionIds": { "type": "array" },
+        "totalQuestions": { "type": "integer" },
+        "totalMarks": { "type": "number" },
+        "marksPerQuestion": { "type": "number" },
+        "negativeMarking": { "type": "number" },
+        "timeLimitMinutes": { "type": "integer" },
+        "examMode": { "type": "string", "enum": ["timed", "untimed", "custom"] },
+        "randomQuestionOrder": { "type": "boolean" },
+        "randomOptionOrder": { "type": "boolean" },
+        "startAtMillis": { "type": "integer" },
+        "endAtMillis": { "type": "integer" },
+        "organizationId": { "type": "string" },
+        "status": { "type": "string", "enum": ["published", "draft", "closed"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "subjectId", "totalQuestions", "totalMarks", "marksPerQuestion", "negativeMarking", "timeLimitMinutes", "examMode", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "ExamSession": {
+      "title": "ExamSession",
+      "description": "Active or completed examination attempt session for a student.",
+      "type": "object",
+      "properties": {
+        "examId": { "type": "string" },
+        "userId": { "type": "string" },
+        "answers": { "type": "object" },
+        "startedAtMillis": { "type": "integer" },
+        "status": { "type": "string", "enum": ["in_progress", "completed", "expired"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["examId", "userId", "status", "createdAt", "updatedAt"]
+    },
+    "ExaminationResult": {
+      "title": "ExaminationResult",
+      "description": "Server-computed official examination result.",
+      "type": "object",
+      "properties": {
+        "examId": { "type": "string" },
+        "examTitle": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "totalQuestions": { "type": "integer" },
+        "answeredQuestions": { "type": "integer" },
+        "unansweredQuestions": { "type": "integer" },
+        "correctAnswers": { "type": "integer" },
+        "incorrectAnswers": { "type": "integer" },
+        "totalMarks": { "type": "number" },
+        "obtainedMarks": { "type": "number" },
+        "negativeMarks": { "type": "number" },
+        "percentage": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "timeTakenSeconds": { "type": "integer" },
+        "status": { "type": "string", "enum": ["completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["examId", "userId", "totalQuestions", "correctAnswers", "incorrectAnswers", "obtainedMarks", "percentage", "status", "createdAt", "updatedAt"]
+    },
+    "PracticeSession": {
+      "title": "PracticeSession",
+      "description": "Resumable student practice session state.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "topicId": { "type": "string" },
+        "questionSetId": { "type": "string" },
+        "title": { "type": "string" },
+        "questionIds": { "type": "array" },
+        "selectedAnswers": { "type": "object" },
+        "currentIndex": { "type": "integer" },
+        "correctCount": { "type": "integer" },
+        "incorrectCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["in_progress", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "questionIds", "currentIndex", "status", "createdAt", "updatedAt"]
+    },
+    "StudentProgress": {
+      "title": "StudentProgress",
+      "description": "Per-subject and daily practice progress tracking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "chapterName": { "type": "string" },
+        "attempted": { "type": "integer" },
+        "correct": { "type": "integer" },
+        "incorrect": { "type": "integer" },
+        "dateKey": { "type": "string" },
+        "status": { "type": "string", "enum": ["active"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subjectId", "attempted", "correct", "incorrect", "status", "createdAt", "updatedAt"]
+    },
+    "WrongAnswer": {
+      "title": "WrongAnswer",
+      "description": "Student-specific record of an incorrectly answered question.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "questionId": { "type": "string" },
+        "questionText": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "chapterName": { "type": "string" },
+        "selectedOption": { "type": "string" },
+        "correctAnswer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "mistakeCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["active", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "questionId", "questionText", "subjectId", "status", "createdAt", "updatedAt"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "User-specific bookmarked question in a personal collection.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "questionId": { "type": "string" },
+        "questionText": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "collectionName": { "type": "string" },
+        "reviewLater": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "questionId", "questionText", "collectionName", "status", "createdAt", "updatedAt"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "Educational update or announcement notification.",
+      "type": "object",
+      "properties": {
+        "targetUid": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "category": { "type": "string", "enum": ["new_mcq_set", "new_exam", "exam_update", "new_subject", "new_chapter", "study_material", "announcement", "result_published"] },
+        "referenceId": { "type": "string" },
+        "readByUids": { "type": "array" },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["targetUid", "title", "body", "category", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Global application settings managed by Super Admin.",
+      "type": "object",
+      "properties": {
+        "maintenanceMode": { "type": "boolean" },
+        "allowRegistration": { "type": "boolean" },
+        "defaultNegativeMarking": { "type": "number" },
+        "announcementBanner": { "type": "string" },
+        "status": { "type": "string", "enum": ["active"] },
+        "updatedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["maintenanceMode", "allowRegistration", "status", "updatedBy", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Security and administrative audit log entry.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string" },
+        "action": { "type": "string" },
+        "targetPath": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string", "enum": ["logged"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorUid", "action", "targetPath", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/organizations/{orgId}": { "schema": { "$ref": "#/entities/Organization" }, "description": "Organizations" },
+    "/users/{userId}": { "schema": { "$ref": "#/entities/UserProfile" }, "description": "User profiles" },
+    "/admins/{adminId}": { "schema": { "$ref": "#/entities/AdminRecord" }, "description": "Admin role records" },
+    "/subjects/{subjectId}": { "schema": { "$ref": "#/entities/Subject" }, "description": "Subjects" },
+    "/chapters/{chapterId}": { "schema": { "$ref": "#/entities/Chapter" }, "description": "Chapters" },
+    "/topics/{topicId}": { "schema": { "$ref": "#/entities/Topic" }, "description": "Topics" },
+    "/pdfDocuments/{pdfId}": { "schema": { "$ref": "#/entities/PdfDocument" }, "description": "PDF metadata" },
+    "/pdfProcessingJobs/{jobId}": { "schema": { "$ref": "#/entities/PdfProcessingJob" }, "description": "PDF OCR/text jobs" },
+    "/questions_public/{questionId}": { "schema": { "$ref": "#/entities/QuestionPublic" }, "description": "Public MCQ stems and options" },
+    "/questionAnswers_private/{questionId}": { "schema": { "$ref": "#/entities/QuestionAnswerPrivate" }, "description": "Protected MCQ answer keys" },
+    "/questionSets/{setId}": { "schema": { "$ref": "#/entities/QuestionSet" }, "description": "Question sets" },
+    "/examinations/{examId}": { "schema": { "$ref": "#/entities/Examination" }, "description": "Examinations" },
+    "/examSessions/{sessionId}": { "schema": { "$ref": "#/entities/ExamSession" }, "description": "Student exam sessions" },
+    "/examinationResults/{resultId}": { "schema": { "$ref": "#/entities/ExaminationResult" }, "description": "Official exam results" },
+    "/practiceSessions/{sessionId}": { "schema": { "$ref": "#/entities/PracticeSession" }, "description": "Student practice sessions" },
+    "/studentProgress/{progressId}": { "schema": { "$ref": "#/entities/StudentProgress" }, "description": "Student progress" },
+    "/wrongAnswers/{wrongId}": { "schema": { "$ref": "#/entities/WrongAnswer" }, "description": "Wrong answer records" },
+    "/bookmarks/{bookmarkId}": { "schema": { "$ref": "#/entities/Bookmark" }, "description": "User bookmarks" },
+    "/notifications/{notificationId}": { "schema": { "$ref": "#/entities/AppNotification" }, "description": "Notifications" },
+    "/appSettings/{settingId}": { "schema": { "$ref": "#/entities/AppSettings" }, "description": "App settings" },
+    "/auditLogs/{logId}": { "schema": { "$ref": "#/entities/AuditLog" }, "description": "Audit logs" }
+  }
+}

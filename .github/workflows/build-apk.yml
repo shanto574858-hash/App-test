@@ -1,0 +1,87 @@
+name: Build Debug APK
+
+on:
+  push:
+    branches: [ '**' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build MCQ Learning App APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Prepare debug keystore
+        run: |
+          if [ ! -s debug.keystore ] && [ -s debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore || true
+          fi
+          if [ ! -s debug.keystore ]; then
+            echo "Generating fallback debug.keystore via keytool..."
+            keytool -genkey -v -keystore debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Prepare google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ ! -s app/google-services.json ] && [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          fi
+          if [ ! -s app/google-services.json ]; then
+            echo "::error::app/google-services.json is missing! Add app/google-services.json to GitHub or set the GOOGLE_SERVICES_JSON repository secret so Firebase works in the APK."
+            exit 1
+          fi
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Build Debug APK
+        run: gradle :app:assembleDebug --no-daemon --no-build-cache
+
+      - name: Rename APK for download
+        run: cp app/build/outputs/apk/debug/app-debug.apk MCQ_Learning_App.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MCQ_Learning_App-apk
+          path: MCQ_Learning_App.apk
+          retention-days: 30
+
+      - name: Publish APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view latest-debug >/dev/null 2>&1; then
+            gh release upload latest-debug MCQ_Learning_App.apk --clobber
+            gh release edit latest-debug --latest --title "MCQ Learning App (Debug APK)"
+          else
+            gh release create latest-debug MCQ_Learning_App.apk \
+              --latest \
+              --title "MCQ Learning App (Debug APK)" \
+              --notes "স্বয়ংক্রিয়ভাবে তৈরি MCQ Learning App এর সর্বশেষ Android APK। নিচের Assets থেকে MCQ_Learning_App.apk ডাউনলোড করুন।"
+          fi
+
+          {
+            echo "### APK ডাউনলোড লিংক"
+            echo "- **Release পেজ (সবসময় কাজ করবে):** ${{ github.server_url }}/${{ github.repository }}/releases/tag/latest-debug"
+            echo "- **Direct লিংক (রিপোজিটরি Public হলে কাজ করবে):** ${{ github.server_url }}/${{ github.repository }}/releases/latest/download/MCQ_Learning_App.apk"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MCQ Learning App</string>
+    <string name="firestore_database_id" translatable="false">(default)</string>
+    <string name="notification_channel_id" translatable="false">mcq_learning_updates</string>
+    <string name="notification_channel_name">শিক্ষামূলক বিজ্ঞপ্তি ও পরীক্ষা</string>
+</resources>
